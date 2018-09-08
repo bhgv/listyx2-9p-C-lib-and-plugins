@@ -25,10 +25,10 @@
 #include "styxserver.h"
 #include "styx.h"
 
-#include "lrotable.h"
+//#include "lrotable.h"
 
 /* Externally defined read-only table array */
-extern const luaR_entry lua_rotable[];
+//extern const luaR_entry lua_rotable[];
 
 
 
@@ -114,8 +114,8 @@ char* ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off);
 char* scan_fs_dir(Qid *qid, const char *path, char *nm);
 int file_pathname_from_path(Path path, char* buf, int max_len);
 
-void* scan_devs(luaR_entry *hdr_entry, char* nm, int type);
-char* dev_call_parse_next_par(char* buf, int *plen);
+//void* scan_devs(luaR_entry *hdr_entry, char* nm, int type);
+//char* dev_call_parse_next_par(char* buf, int *plen);
 
 
 #endif

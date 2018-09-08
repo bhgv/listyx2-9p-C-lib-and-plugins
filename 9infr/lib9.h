@@ -76,7 +76,9 @@ typedef unsigned long uintptr;
  */
 
 extern	char*	strecpy(char*, char*, char*);
+#if 0
 extern	char*	strdup(const char*);
+#endif
 extern	int	cistrncmp(char*, char*, int);
 extern	int	cistrcmp(char*, char*);
 extern	char*	cistrstr(char*, char*);

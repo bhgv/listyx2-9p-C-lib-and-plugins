@@ -35,6 +35,14 @@
 
 
 
+void luaA_pushobject(lua_State *L, const TValue *o){
+  lua_lock(L);
+  setobj2s(L, L->top, o);
+  api_incr_top(L);
+  lua_unlock(L);
+}
+
+
 void*
 scan_devs(luaR_entry *hdr_entry, char* nm, int type){
 	int i = 1;
@@ -95,8 +103,6 @@ dev_call_parse_next_par(char* buf, int *plen){
 //DBG("%s: %d. r=%s, l=%d\n", __func__, __LINE__, r, l);
 	return r;
 }
-
-
 
 
 char*

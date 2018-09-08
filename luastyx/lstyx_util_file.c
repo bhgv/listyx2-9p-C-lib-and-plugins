@@ -34,6 +34,8 @@
 
 
 
+#define BUF_SIZE 1024
+
 
 char*
 ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
@@ -48,6 +50,16 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 	DIR *dir = NULL;
 	struct dirent *ent;
 	
+	char *name_buf = NULL;
+
+	struct stat file_info;
+	int status = 0;
+	
+	char* tmp_nm;
+	
+	name_buf = malloc(BUF_SIZE);
+	if( !name_buf )
+		return NULL;
 	
 	memset( &d, 0, sizeof(Dir) );
 
@@ -58,6 +70,7 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 	dir = opendir(path);
 	if (!dir) {
 		*n = 0;
+		free(name_buf);
 		return nil;
 	}
 	
@@ -76,7 +89,10 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 		if (ent->d_type == DT_REG) {
 			d.qid.my_type = FS_FILE_FILE;
 			//type = 'f';
-			d.length = ent->d_fsize;
+			printf("max(%d): %s/%s", path, ent->d_name);
+			snprintf(name_buf, BUF_SIZE-1, "%s/%s", path, ent->d_name);
+			status = stat(name_buf, &file_info);
+			d.length = file_info.st_size;
 
 			d.qid.type = QTFILE;
  			d.mode = DMREAD | DMWRITE | DMEXEC;
@@ -84,7 +100,9 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 //			sprintf(size,"%8d", ent->d_fsize);
 		}
 
-		d.name = ent->d_name;
+		//tmp_nm = malloc( strlen(ent->d_name) + 1);
+		//strcpy(tmp_nm, ent->d_name);
+		d.name = ent->d_name; //tmp_nm;
 
 		if(i >= dri){
 			dsz = convD2M(&d, (uchar*)buf, *n-m);
@@ -101,6 +119,8 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 	*n = m;
 	*off = i;
 
+	free(name_buf);
+	
 	return nil;
 }
 
@@ -231,9 +251,10 @@ for( ; lvl > 0; lvl--){
 //DBG("\nfile_pathname_from_path lvl = %d, cur_n = %d\n", lvl, cur_n );
 	while ((ent = readdir(dir)) != NULL) {
 		if( i == cur_n ){
-			int l = ent->d_namlen;
+			int l;
 			
 			cur_nm = ent->d_name;
+			l = strlen(cur_nm); //ent->d_namlen;
 //DBG("file_pathname_from_path cur_nm = %s, nm_len = %d, %d\n", cur_nm, l, strlen(cur_nm) );
 			if (ent->d_type == DT_REG) {
 				if( lvl > 1){

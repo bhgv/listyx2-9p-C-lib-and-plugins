@@ -86,7 +86,7 @@ struct Styxfile
 	union {
 		void	*u;
 		int		fi;
-	}
+	};
 };
 
 char *styxinit(Styxserver *server, Styxops *ops, char *port, int perm, int needfile);

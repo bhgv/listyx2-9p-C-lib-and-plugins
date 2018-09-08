@@ -26,7 +26,7 @@
 
 
 
-#if 0
+#if 1
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...) ;
@@ -46,6 +46,8 @@ int is_styx_srv_run = 1;
 
 char* styx_cgi_reg = "styx_cgi";
 
+
+lua_State* intL = NULL;
 
 
 #if 1
@@ -97,9 +99,9 @@ fsopen(Qid *qid, int mode)
 
 DBG("\nfsopen 1 qid->type = %d, qid.my_type = %d, mode = %x\n\n", qid->type, qid->my_type, mode);
 	switch( qid->my_type ){
-		case FS_DEV:
-		case FS_DEV_FILE:
-			return fsdevopen(qid, mode);
+//		case FS_DEV:
+//		case FS_DEV_FILE:
+//			return fsdevopen(qid, mode);
 
 		case FS_FILE:
 		case FS_FILE_DIR:
@@ -133,9 +135,9 @@ fsclose(Qid *qid, int mode)
 {
 
 	switch( qid->my_type ){
-		case FS_DEV:
-		case FS_DEV_FILE:
-			return fsdevclose(qid, mode);
+//		case FS_DEV:
+//		case FS_DEV_FILE:
+//			return fsdevclose(qid, mode);
 		
 //		case FS_FILE:
 		case FS_FILE_DIR:
@@ -241,8 +243,8 @@ fswalk(Qid* qid, char *nm)
 
 DBG("%s: %d, qid->my_type = %d, nm = %s\n", __func__, __LINE__, qid->my_type, nm);
 	switch(qid->my_type){
-	case FS_DEV:
-		return fsdevwalk(qid, nm);
+//	case FS_DEV:
+//		return fsdevwalk(qid, nm);
 
 	case FS_FILE:
 	case FS_FILE_DIR:
@@ -284,9 +286,9 @@ if(qid->my_name){
 DBG("\n\n");
 
 	switch( qid->my_type ){
-		case FS_DEV:
-		case FS_DEV_FILE:
-			return fsdevread(*qid, buf, n, off);
+//		case FS_DEV:
+//		case FS_DEV_FILE:
+//			return fsdevread(*qid, buf, n, off);
 			
 		case FS_FILE:
 		case FS_FILE_DIR:
@@ -331,9 +333,9 @@ fswrite(Qid *qid, char *buf, ulong *n, vlong off)
 
 DBG("%s: %d, qid->my_type = %d, *n=%d, off=%d\n", __func__, __LINE__, qid->my_type, *n, off);
 	switch( qid->my_type ){
-		case FS_DEV_FILE:
-DBG("%s: %d\n", __func__, __LINE__);
-			return fsdevwrite(qid, buf, n, off);
+//		case FS_DEV_FILE:
+//DBG("%s: %d\n", __func__, __LINE__);
+//			return fsdevwrite(qid, buf, n, off);
 			
 		case FS_FILE:
 		case FS_FILE_DIR:
@@ -385,7 +387,7 @@ DBG("%s: %d. qid.my_type = %d, my_name = %s\n", __func__, __LINE__,
 		case FS_FILE_DIR:
 			return fsfilestat(qid, d);
 
-		case FS_DEV:
+//		case FS_DEV:
 		case FS_ROOT:
 		//default:
 			file = styxfindfile(server, qid.path);
@@ -490,16 +492,16 @@ myinit(/*Styxserver *s*/)
 
 	server->root->d.qid.my_type = FS_ROOT;
 	
-	f = styxadddir(server, Qroot, 1, "dev", 0555, eve);
-	f->d.qid.my_type = FS_DEV;
+//	f = styxadddir(server, Qroot, 1, "dev", 0555, eve);
+//	f->d.qid.my_type = FS_DEV;
 
-	f = styxadddir(server, Qroot, 2, "fs", 0777, eve);
+	f = styxadddir(server, Qroot, 1, "fs", 0777, eve);
 	f->d.qid.my_type = FS_FILE;
 
-	f = styxaddfile(server, Qroot, 3, "rpc", 0666, eve);
+	f = styxaddfile(server, Qroot, 2, "rpc", 0666, eve);
 	f->d.qid.my_type = FS_RPC;
 	
-	nq = 4;
+	nq = 3;
 }
 
 
@@ -624,9 +626,12 @@ lstyx_stop(lua_State* L){
 	is_styx_srv_run = 0;
 	return 0;
 }
-	
+
 int
 lstyx_loop(lua_State* L){
+	if(lua_gettop(L) < 1 || lua_type(L, 1) != LUA_TTABLE)
+		return 0;
+	
 	if(server != NULL){
 		free(server);
 	}
@@ -661,10 +666,11 @@ lstyx_loop(lua_State* L){
 
 
 
+/*
 #include "modules.h"
 
 const LUA_REG_TYPE styx_map[] = {
-		{ LSTRKEY( "loop" ),		LFUNCVAL( lstyx_loop ) },		
+		{ LSTRKEY( "loop" ),		LFUNCVAL( lstyx_loop ) },
 		{ LSTRKEY( "stop" ),		LFUNCVAL( lstyx_stop ) },
 		
 		{ LSTRKEY( "add_file" ),	LFUNCVAL( lstyx_add_file ) },
@@ -683,7 +689,29 @@ int luaopen_styx( lua_State *L ) {
 	return 0;
 }
 
-
 MODULE_REGISTER_MAPPED(STYX, styx, styx_map, luaopen_styx);
+*/
+
+static const struct luaL_Reg styx_map[] = {
+		{ "serve",		lstyx_loop },
+		{ "stop",		lstyx_stop },
+		
+		{ "add_file",		lstyx_add_file },
+		{ "add_dir",		lstyx_add_folder },
+		
+		{ NULL, NULL }
+};
+
+
+
+int luaopen_styx( lua_State *L ) {
+	luaL_newlib(L, styx_map);
+	lua_pushvalue(L, -1);
+	lua_setglobal(L, "styx");
+
+	return 1;
+}
+
+
 
 

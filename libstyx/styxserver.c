@@ -15,6 +15,7 @@
 #endif
 
 
+#define styxtime(a) 0
 
 
 #define MAXSTAT	256 //512

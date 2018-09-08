@@ -16,6 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/stat.h>
 
 #include <lib9.h>
 #include "styxserver.h"
@@ -32,6 +33,8 @@
 #endif
 
 
+
+#define styxtime(a) 0
 
 
 char*
