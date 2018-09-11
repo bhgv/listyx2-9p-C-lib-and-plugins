@@ -3,7 +3,7 @@
 
 
 
-#if 0
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...)
@@ -41,6 +41,7 @@ pqid(uchar *p, Qid *q)
 	p += BIT32SZ;
 	PBIT64(p, q->path);
 	p += BIT64SZ;
+DBG("%s:%d, q->path=(%x:%x)\n", __func__, __LINE__, (int)(q->path>>32), (int)q->path);
 	return p;
 }
 

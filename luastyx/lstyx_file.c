@@ -26,7 +26,7 @@
 
 
 
-#if 0
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...)  ;
@@ -42,7 +42,7 @@ fsfileopen(Qid *qid, int mode)
 {
 	Styxfile *f;
 
-DBG("\nfsopen 1 qid->type = %d, qid.my_type = %d, mode = %x\n\n", qid->type, qid->my_type, mode);
+DBG("\nfsfileopen 1 qid->type = %d, qid.my_type = %d, mode = %x\n\n", qid->type, qid->my_type, mode);
 	switch( qid->my_type ){
 		case FS_FILE:
 		case FS_FILE_DIR:
@@ -291,7 +291,7 @@ DBG("%s: %d, qid->my_type = %d, nm = %s\n", __func__, __LINE__, qid->my_type, nm
 
 
 char *
-fsfileread(Qid qid, char *buf, ulong *n, vlong *off)
+fsfileread(Qid *qid, char *buf, ulong *n, vlong *off)
 {
 	int m;
 	Styxfile *f;
@@ -299,22 +299,23 @@ fsfileread(Qid qid, char *buf, ulong *n, vlong *off)
 	int dri = *off;
 	int pth;
 
-DBG("\nfsread my_type = %d", qid.my_type);
-if(qid.my_name)
-	DBG(", my_name = %s", qid.my_name);
+DBG("\nfsfileread (%x:%x) my_type = %d", (int)(qid->path>>32), (int)qid->path, qid->my_type);
+if(qid->my_name)
+	DBG(", my_name = %s", qid->my_name);
 DBG("\n\n");
 
-	switch( qid.my_type ){
+	switch( qid->my_type ){
 		case FS_FILE:
-			ls_dir_rd_out("/", qid, buf, n, off);
+DBG("\n%s: %d. root = %s\n", __func__, __LINE__, "/");
+			ls_dir_rd_out("/", *qid, buf, n, off);
 			break;
 			
 		case FS_FILE_DIR:
 			{
 				char *pth = malloc(256);
-				int l = file_pathname_from_path(qid.path, pth, 255);
-//DBG("\n%s: %d. len = %d, pth = %s\n", __func__, __LINE__, l, pth);
-				ls_dir_rd_out(pth, qid, buf, n, off);
+				int l = file_pathname_from_path(qid->path, pth, 255);
+DBG("\n%s: %d. len = %d, pth = %s (%x:%x)\n", __func__, __LINE__, l, pth, (int)(qid->path>>32), (int)qid->path);
+				ls_dir_rd_out(pth, *qid, buf, n, off);
 				free(pth);
 			}
 			break;
@@ -325,11 +326,11 @@ DBG("\n\n");
 				int c;
 				int i, j;
 //				char *pth = malloc(256);
-DBG("\n%s:%d path = %x:%x\n", __func__, __LINE__, (int)(qid.path>>32), (int)qid.path);
-//				int l = file_pathname_from_path(qid.path, pth, 255);
+DBG("\n%s:%d path = %x:%x\n", __func__, __LINE__, (int)(qid->path>>32), (int)qid->path);
+//				int l = file_pathname_from_path(qid->path, pth, 255);
 
 //DBG("%s: %d. pth = %s, dri = %d, *n = %d\n\n", __func__, __LINE__, pth, dri, *n);
-				fp = qid.my_f;  //fopen(pth,"r");
+				fp = qid->my_f;  //fopen(pth,"r");
 
 //				free(pth);
 				
@@ -355,6 +356,8 @@ DBG("\n%s: %d. i = %d, j = %d\n\n", __func__, __LINE__, i, j);
 			break;
 			
 	}
+
+DBG("\n%s:%d exit (%x:%x)\n", __func__, __LINE__, (int)(qid->path>>32), (int)qid->path);
 
 	return nil;
 }

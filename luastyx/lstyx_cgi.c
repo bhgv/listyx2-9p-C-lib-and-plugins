@@ -26,7 +26,7 @@
 
 
 
-#if 0
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...) ;

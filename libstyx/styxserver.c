@@ -8,7 +8,7 @@
 
 
 
-#if 0
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...)
@@ -25,7 +25,12 @@
 
 static	unsigned long		boottime;
 char*	eve = "inferno";
+
+#ifdef DEBUG
+static	int		Debug = 1;
+#else
 static	int		Debug = 0;
+#endif
 
 char Enomem[] =		"out of memory";
 char Eperm[] =			"permission denied";
@@ -57,7 +62,7 @@ struct Fid
 	ushort	open;
 	ushort	mode;	/* read/write */
 	ulong	offset;	/* in file */
-	int		dri;		/* dirread index */
+	/*int*/vlong		dri;		/* dirread index */
 	Qid		qid;
 };
 
@@ -403,6 +408,10 @@ findfid(Client *c, short fid)
 	Fid *f;
 	for(f = c->fids; f && f->fid != fid; f = f->next)
 		;
+
+if(f)
+DBG("%s: %d fid=%x, f->qid.path=(%x:%x)\n", __func__, __LINE__, fid, (int)(f->qid.path>>32), (int)f->qid.path );
+
 	return f;
 }
 
@@ -751,6 +760,9 @@ run(Client *c)
 	
 	file = nil;
 	fp = findfid(c, f->fid);
+DBG("%s: %d fp=%x\n", __func__, __LINE__, fp);
+if(fp)
+DBG("%s: %d path=%x:%x\n", __func__, __LINE__, (int)(fp->qid.path>>32), (int)fp->qid.path);
 	if(f->type != Tversion && f->type != Tauth && f->type != Tattach){
 		if(fp == nil){
 			f->type = Rerror;
@@ -770,6 +782,9 @@ run(Client *c)
 			}
 		}
 	}
+DBG("%s: %d fp=%x\n", __func__, __LINE__, fp);
+if(fp)
+DBG("%s: %d path=%x:%x\n", __func__, __LINE__, (int)(fp->qid.path>>32), (int)fp->qid.path);
 	/* if(fp == nil) fprint(2, "fid not found for %d\n", f->fid); */
 	switch(f->type){
 	case	Twalk:
@@ -831,6 +846,7 @@ DBG("%s: %d. %d) my_type=%d, t=%d, pth=%d\n", __func__, __LINE__,
 			styxfree(wq);
 		}
 DBG("%s: %d\n", __func__, __LINE__);
+//DBG("%s: %d path=%x:%x\n", __func__, __LINE__, (int)(fp->qid.path>>32), (int)fp->qid.path);
 		wr(c, f);
 		break;
 	case	Topen:
@@ -927,7 +943,7 @@ DBG("%s: %d\n", __func__, __LINE__);
 			wr(c, f);
 			break;
 		}
-DBG("%s: %d\n", __func__, __LINE__);
+DBG("%s: %d path=%x:%x\n", __func__, __LINE__, (int)(fp->qid.path>>32), (int)fp->qid.path);
 		if(fp->qid.type & QTDIR || (file != nil && file->d.qid.type & QTDIR)){
 			f->type = Rread;
 DBG("%s: %d file = %x, ops = %x, ops->read = %x\n", __func__, __LINE__, file, ops, ops->read);
@@ -1062,7 +1078,7 @@ DBG("%s: %d\n", __func__, __LINE__);
 		if(Debug)
 			printf("\nTversion\n");
 		f->type = Rversion;
-		f->msize = MSGMAX;
+		f->msize = max_msg_len; //MSGMAX;
 		f->tag = NOTAG;
 		wr(c, f);
 		break;

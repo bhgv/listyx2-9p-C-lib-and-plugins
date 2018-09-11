@@ -5,8 +5,18 @@
 
 #define Qroot	0
 
-//#define MSGMAX	((((8192+128)*2)+3) & ~3)
+#ifndef MSGMAX
+
+#ifdef SMALL_MEM
 #define MSGMAX	((((128+128)*2)+3) & ~3)
+#else
+//#define MSGMAX	((((8192+128)*2)+3) & ~3)
+#define MSGMAX	(((8192-128+128)+3) & ~3)
+#endif
+
+#endif
+
+extern int max_msg_len;
 
 extern char Enomem[];	/* out of memory */
 extern char Eperm[];		/* permission denied */

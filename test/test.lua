@@ -1,5 +1,6 @@
-require "styx"
 
+require "styx"
+ 
 print (styx)
 for k,v in pairs(styx) do
     print(k, v)

@@ -26,7 +26,7 @@
 
 
 
-#if 0
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...)
@@ -63,6 +63,7 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 	
 	memset( &d, 0, sizeof(Dir) );
 
+DBG("%s:%d (%x:%x) path = %s\n\n", __func__, __LINE__, (int)(qid.path>>32), (int)qid.path, path);
 //	d.uid = eve;
 //	d.gid = eve;
 	
@@ -89,10 +90,12 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 		if (ent->d_type == DT_REG) {
 			d.qid.my_type = FS_FILE_FILE;
 			//type = 'f';
-			printf("max(%d): %s/%s", path, ent->d_name);
+//DBG("%s:%d max(%d): %s/%s\t", __func__, __LINE__, path, ent->d_name);
 			snprintf(name_buf, BUF_SIZE-1, "%s/%s", path, ent->d_name);
+
 			status = stat(name_buf, &file_info);
 			d.length = file_info.st_size;
+DBG("%s:%d fl_name=%s, fl_len=%d\n", __func__, __LINE__, name_buf, d.length);
 
 			d.qid.type = QTFILE;
  			d.mode = DMREAD | DMWRITE | DMEXEC;
@@ -123,6 +126,44 @@ ls_dir_rd_out(const char *path, Qid qid, char *buf, ulong *n, vlong *off){
 	
 	return nil;
 }
+
+
+
+#if 1
+Path
+make_file_path(Path new_type, Path oldp, int idx){
+	Path newp = 0ULL;
+DBG("\n%s:%d oldp = %x:%x, i = %d\n", __func__, __LINE__, (int)(oldp>>32), (int)oldp, idx);
+	Path lvl = PATH_LVL_GET(oldp);
+DBG("%s:%d lvl = %x:%x\n", __func__, __LINE__, (int)(lvl>>32), (int)lvl);
+
+	Path mainpt = oldp & PATH_MAIN_PT_MASK;
+DBG("%s:%d mainpt = %x:%x\n", __func__, __LINE__, (int)(mainpt>>32), (int)mainpt);
+
+	Path curpt = idx & PATH_STEP_MASK;
+	curpt <<= lvl * PATH_MAIN_PT_STEP;
+DBG("%s:%d curpt = %x:%x\n", __func__, __LINE__, (int)(curpt>>32), (int)curpt);
+
+	mainpt &= ~( PATH_STEP_MASK << (lvl * PATH_MAIN_PT_STEP) );
+DBG("%s:%d mainpt = %x:%x\n", __func__, __LINE__, (int)(mainpt>>32), (int)mainpt);
+	mainpt |= curpt;
+DBG("%s:%d mainpt = %x:%x\n", __func__, __LINE__, (int)(mainpt>>32), (int)mainpt);
+
+	lvl++;
+DBG("%s:%d lvl = %x:%x\n", __func__, __LINE__, (int)(lvl>>32), (int)lvl);
+
+	PATH_LVL_SET(newp, lvl);
+DBG("%s:%d newp = %x:%x\n", __func__, __LINE__, (int)(newp>>32), (int)newp);
+	newp |= mainpt;
+DBG("%s:%d newp = %x:%x\n", __func__, __LINE__, (int)(newp>>32), (int)newp);
+DBG("%s:%d new_type = %x:%x\n", __func__, __LINE__, (int)(new_type>>32), (int)new_type);
+	PATH_TYPE_COPY(newp, new_type);
+DBG("%s:%d newp = %x:%x\n\n", __func__, __LINE__, (int)(newp>>32), (int)newp);
+	
+	return newp;
+}
+#endif
+
 
 
 /*
@@ -176,8 +217,14 @@ scan_fs_dir(Qid *qid, const char *path, char *nm){
 	
 	// Read entries
 	i = 0; 
-DBG("\n%s:%d. old_path = %x:%x\n\n", __func__, __LINE__, (int)(qid->path >> 32), (int)qid->path );
+DBG("\n%s:%d. path=%s nm=%s old_path=%x:%x\n\n", __func__, __LINE__, path, nm, (int)(qid->path >> 32), (int)qid->path );
 	while ((ent = readdir(dir)) != NULL) {
+		int l;
+		char *cur_nm = ent->d_name;
+		l = strlen(cur_nm); //ent->d_namlen;
+		if((l == 1 && cur_nm[0] == '.') || (l == 2 && cur_nm[0] == '.' && cur_nm[1] == '.'))
+			continue;
+		
 		if( !strcmp(ent->d_name, nm) ){
 //			qid->path = PATH_FILE + (PATH_STEP_MASK & i);
 			qid->path = make_file_path( PATH_FILE, (Path)qid->path, i);
@@ -210,6 +257,95 @@ DBG("\n%s:%d new_path = %x:%x\n\n", __func__, __LINE__, (int)(qid->path >> 32), 
 }
 
 
+
+int
+_aux_file_pathname_from_path(Path path, Path lvl, Path mainpt, char* buf, char* pbuf, int cur_len, int max_len){
+	int i;
+		
+	DIR *dir = NULL;
+	struct dirent *ent;
+
+DBG("%s:%d path = %x:%x\n", __func__, __LINE__, (int)(path>>32), (int)path);
+
+//	Path lvl = PATH_LVL_GET(path);
+//	Path mainpt = path & PATH_MAIN_PT_MASK;
+
+//	char *pthnm = "/";
+//	int cur_len = 0;
+	char *cur_nm;
+
+//	char *pbuf = buf;
+
+	if(lvl < 0)
+		return cur_len;
+
+//for( ; lvl > 0; lvl--)
+//{
+	int cur_n = (int)(mainpt & PATH_STEP_MASK);
+	mainpt >>= PATH_MAIN_PT_STEP;
+
+	cur_len++;
+	if(cur_len > max_len) return 0;
+	
+	*pbuf = '/'; pbuf++; *pbuf = '\0';
+
+DBG("%s:%d path = %s\n", __func__, __LINE__, buf );
+	// Open directory
+	dir = opendir( buf );
+	if (!dir) {
+		return 0;
+	}
+	
+	// Read entries
+	i = 0; 
+DBG("\n%s:%d lvl = %d, cur_n = %d\n", __func__, __LINE__, lvl, cur_n );
+	while ((ent = readdir(dir)) != NULL) {
+		int l;
+		
+		cur_nm = ent->d_name;
+		l = strlen(cur_nm); //ent->d_namlen;
+		if((l == 1 && cur_nm[0] == '.') || (l == 2 && cur_nm[0] == '.' && cur_nm[1] == '.'))
+			continue;
+			
+DBG("%s:%d i=%d ?= cur_n=%d\n", __func__, __LINE__, i, cur_n);
+		if( i == cur_n ){
+DBG("%s:%d cur_nm = %s, nm_len = %d, %d\n", __func__, __LINE__, cur_nm, l, strlen(cur_nm) );
+			if (ent->d_type == DT_REG) {
+				if( lvl > 1){
+DBG("\nERROR! %s:%d. lvl = %d, but fn = %s is a file!\n\n", __func__, __LINE__, lvl, cur_nm);
+					return 0;
+				}
+				//d.length = ent->d_fsize;
+			}
+			
+			cur_len += l;
+			if(cur_len > max_len){
+				closedir(dir);
+				return 0;
+			}
+			
+			memcpy(pbuf, cur_nm, l);
+			pbuf += l;
+			*pbuf = '\0';
+			
+			break;
+		}
+		i++;
+	}
+	closedir(dir);
+	
+	lvl--;
+	if(/*i == cur_n &&*/ (int)lvl > 0){
+DBG("%s:%d lvl = %d\n", __func__, __LINE__, lvl );
+		cur_len = _aux_file_pathname_from_path(path, lvl, mainpt, buf, pbuf, cur_len, max_len);
+	}
+//}
+
+	return cur_len;
+}
+
+
+
 int
 file_pathname_from_path(Path path, char* buf, int max_len){
 	int i;
@@ -217,7 +353,7 @@ file_pathname_from_path(Path path, char* buf, int max_len){
 	DIR *dir = NULL;
 	struct dirent *ent;
 
-//DBG("%s:%d path = %x:%x\n", __func__, __LINE__, (int)(path>>32), (int)path);
+DBG("%s:%d path = %x:%x\n", __func__, __LINE__, (int)(path>>32), (int)path);
 
 	Path lvl = PATH_LVL_GET(path);
 	Path mainpt = path & PATH_MAIN_PT_MASK;
@@ -228,6 +364,10 @@ file_pathname_from_path(Path path, char* buf, int max_len){
 
 	char *pbuf = buf;
 
+cur_len = _aux_file_pathname_from_path(path, lvl, mainpt, buf, buf, 0, max_len);
+DBG("file_pathname_from_path cur_len=%d, path = %s\n", cur_len, buf );
+
+#if 0
 for( ; lvl > 0; lvl--){
 	int cur_n = (int)(mainpt & PATH_STEP_MASK);
 	mainpt >>= PATH_MAIN_PT_STEP;
@@ -280,7 +420,7 @@ for( ; lvl > 0; lvl--){
 	}
 	closedir(dir);
 }
-
+#endif
 	return cur_len;
 }
 

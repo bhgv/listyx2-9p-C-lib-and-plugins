@@ -26,7 +26,7 @@
 
 
 
-#if 1
+#ifdef DEBUG
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...) ;
@@ -50,7 +50,10 @@ char* styx_cgi_reg = "styx_cgi";
 lua_State* intL = NULL;
 
 
-#if 1
+int max_msg_len = MSGMAX;
+
+
+#if 0
 Path
 make_file_path(Path new_type, Path oldp, int idx){
 	Path newp = 0ULL;
@@ -97,7 +100,7 @@ fsopen(Qid *qid, int mode)
 {
 	Styxfile *f;
 
-DBG("\nfsopen 1 qid->type = %d, qid.my_type = %d, mode = %x\n\n", qid->type, qid->my_type, mode);
+DBG("\nfsopen 1 qid->type = %d, qid.my_type = %d, mode = %x (%x:%x)\n\n", qid->type, qid->my_type, mode, (int)(qid->path>>32), (int)qid->path );
 	switch( qid->my_type ){
 //		case FS_DEV:
 //		case FS_DEV_FILE:
@@ -279,7 +282,7 @@ fsread(Qid *qid, char *buf, ulong *n, vlong *off)
 
 DBG("\n%s:%d, qid->my_buf = %x\n", __func__, __LINE__, qid->my_buf  );
 
-DBG("\nfsread my_type = %d", qid->my_type);
+DBG("\nfsread my_type = %d (%x:%x)", qid->my_type, (int)(qid->path>>32), (int)qid->path);
 if(qid->my_name){
 	DBG(", my_name = %s", qid->my_name);
 }
@@ -293,7 +296,7 @@ DBG("\n\n");
 		case FS_FILE:
 		case FS_FILE_DIR:
 		case FS_FILE_FILE:
-			return fsfileread(*qid, buf, n, off);
+			return fsfileread(qid, buf, n, off);
 			
 		case FS_RPC:
 			return fsrpcread(qid, buf, n, off);
