@@ -13,3 +13,6 @@ How to Build
 ```
 bld.sh
 ```
+
+Host-only tests and the Lua command buffer contract are described in
+[test/regression/README.md](test/regression/README.md).
